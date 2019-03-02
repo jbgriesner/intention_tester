@@ -1,20 +1,17 @@
+extern crate rusty_machine as rm;
+extern crate reqwest;
 extern crate csv;
-extern crate hyper;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
 
 use std::fs;
 use std::fs::File;
 use std::process::exit;
 pub type Error = failure::Error;
 
-use std::io::{self, Write};
-use hyper::Client;
-use hyper::rt::{self, Future, Stream};
-
 use structopt::StructOpt;
-use log::{info, warn, error};
-
+use serde_json::{Value};
 
 #[derive(StructOpt, Debug)]
 struct Args {
@@ -41,59 +38,58 @@ struct TestRow {
     info_poi: Option<String>,
 }
 
-fn process_file(path: std::path::PathBuf, url: hyper::Uri) -> impl Future<Item=(), Error=()> {
-    let file = File::open(path)?;
-    let mut rdr = csv::Reader::from_reader(file);
-    for row in rdr.deserialize() {
-        let test_row: TestRow = row.unwrap();
-    //            let test_row: TestRow = row?;
-        println!("--- {:?}", test_row);
-    }
+
+#[derive(Deserialize)]
+struct NLUresponse {
+    _query: String,
 }
 
-fn parse_csv<I>(url: hyper::Uri, paths: I) -> Result<(), Error>
+fn parse_csv<I>(url: String, paths: I) -> Result<(), Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
 {
+    let mut predictions: Vec<String> = Vec::new();
+    let mut effective_class: Vec<String> = Vec::new();
 
+    println!("api url: {}", url);
+    let client = reqwest::Client::new();
     for path in paths {
         println!("Loading test file: \'{}\'...", path.clone().into_os_string().into_string().unwrap());
-        rt::run(process_file(path, url));
+        let file = File::open(path)?;
+        let mut rdr = csv::Reader::from_reader(file);
+
+        for rw in rdr.deserialize() {
+            let test_row: TestRow = rw?;
+//            let test_row: TestRow = rw.unwrap();
+//            let test_row: TestRow = row?;
+//            println!("--- {:?}", test_row);
+            let query = test_row.query;
+            let intention = test_row.intention;
+
+            println!("query: {}, intention: {}", query, intention);
+            let params = [("q", query)];
+            let resp = client.post(&url).query(&params).send()?.text()?;
+            let v: Value = serde_json::from_str(&resp)?;
+            println!("{:#?}", v);
+            println!("{:#?}", v["features"]);
+
+            let predicted = v["class"].to_string();
+
+            effective_class.push(intention);
+            predictions.push(predicted);
+        }
         println!("finished!");
     }
 
-    rt::run(rt::lazy(|| {
-        let client = Client::new();
 
-        let uri = "http://httpbin.org/ip".parse().unwrap();
-
-
-        client
-            .get(uri)
-            .and_then(|res| {
-                println!("Response: {}", res.status());
-                res
-                    .into_body()
-                    .for_each(|chunk| {
-                        io::stdout()
-                            .write_all(&chunk)
-                            .map_err(|e| {
-                                panic!("example expects stdout is open, error={}", e)
-                            })
-                    })
-            })
-            .map_err(|err| {
-                println!("Error: {}", err);
-            })
-    }));
-
-
-
+    println!("predictions: {:#?}", predictions);
+    println!("classes: {:#?}", effective_class);
     Ok(())
 }
 
 fn run(args: Args) -> Result<(), Error> {
-        let url = args.nlu_api_url.parse::<hyper::Uri>().unwrap();
+        let url = args.nlu_api_url;
+
         if args.path_test_files.is_dir() {
             let paths: std::fs::ReadDir = fs::read_dir(&args.path_test_files)?;
             parse_csv(url, paths.map(|p| p.unwrap().path()))
@@ -110,7 +106,7 @@ where
 {
     if let Err(e) = run(O::from_args()) {
         for cause in e.iter_chain() {
-            error!("{}", cause);
+            println!("{}", cause);
         }
         Err(e)
     } else {
@@ -131,3 +127,4 @@ where
 fn main() {
     launch_run(run);
 }
+//http://smallcultfollowing.com/babysteps/blog/2016/04/27/non-lexical-lifetimes-introduction/

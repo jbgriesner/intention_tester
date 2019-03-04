@@ -1,7 +1,7 @@
+use crate::{json, Error, StructOpt, Value};
 use std::process::exit;
-use crate::{StructOpt,Error,Value,json};
 
-#[derive(Debug,Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct CsvRow {
     pub query: String,
     pub intention: String,

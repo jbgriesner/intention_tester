@@ -1,2 +1,3 @@
 query,intention,info_poi
-commissariat paris,geocoding,toto
+commissariat paris,category,police
+commissariat paris,category,restaurant

@@ -11,3 +11,4 @@ RUN apt-get update \
 COPY . ./
 
 RUN cargo build --release
+RUN cargo run

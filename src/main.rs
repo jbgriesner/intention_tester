@@ -1,17 +1,14 @@
-extern crate rusty_machine as rm;
-extern crate reqwest;
-extern crate csv;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
+//extern crate serde_json;
 
 use std::fs;
 use std::fs::File;
 use std::process::exit;
-pub type Error = failure::Error;
-
 use structopt::StructOpt;
-use serde_json::{Value};
+use serde_json::{json,Value};
+
+pub type Error = failure::Error;
 
 #[derive(StructOpt, Debug)]
 struct Args {
@@ -32,16 +29,14 @@ struct Args {
 }
 
 #[derive(Debug,Deserialize)]
-struct TestRow {
+struct CsvRow {
     query: String,
     intention: String,
     info_poi: Option<String>,
 }
 
-
-#[derive(Deserialize)]
-struct NLUresponse {
-    _query: String,
+fn get_params(query: &String) -> Value {
+    json!({"text": &query,"language":"fr","domain":"poi","count":1})
 }
 
 fn parse_csv<I>(url: String, paths: I) -> Result<(), Error>
@@ -59,28 +54,19 @@ where
         let mut rdr = csv::Reader::from_reader(file);
 
         for rw in rdr.deserialize() {
-            let test_row: TestRow = rw?;
-//            let test_row: TestRow = rw.unwrap();
-//            let test_row: TestRow = row?;
-//            println!("--- {:?}", test_row);
+            let test_row: CsvRow = rw?;
             let query = test_row.query;
-            let intention = test_row.intention;
+            let real_intention = test_row.intention;
+            let params = get_params(&query);
+            let resp: Value = client.post(&url).json(&params).send()?.json()?;
 
-            println!("query: {}, intention: {}", query, intention);
-            let params = [("q", query)];
-            let resp = client.post(&url).query(&params).send()?.text()?;
-            let v: Value = serde_json::from_str(&resp)?;
-            println!("{:#?}", v);
-            println!("{:#?}", v["features"]);
-
-            let predicted = v["class"].to_string();
-
-            effective_class.push(intention);
-            predictions.push(predicted);
+            let predicted_intention: String = resp["intention"][0][1].to_string();
+            println!(" --- query: \'{}\', real_intention: \'{}\', predicted_intention: \'{}\'", query, real_intention, predicted_intention);
+            effective_class.push(real_intention);
+            predictions.push(predicted_intention);
         }
         println!("finished!");
     }
-
 
     println!("predictions: {:#?}", predictions);
     println!("classes: {:#?}", effective_class);
@@ -96,7 +82,6 @@ fn run(args: Args) -> Result<(), Error> {
         } else {
             parse_csv(url, std::iter::once(args.path_test_files))
         }
-
 }
 
 fn wrapped_run<O, F>(run: F) -> Result<(), Error>
@@ -127,4 +112,3 @@ where
 fn main() {
     launch_run(run);
 }
-//http://smallcultfollowing.com/babysteps/blog/2016/04/27/non-lexical-lifetimes-introduction/

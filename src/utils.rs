@@ -5,7 +5,6 @@ use std::process::exit;
 pub struct CsvRow {
     pub query: String,
     pub intention: String,
-    pub info_poi: Option<String>,
 }
 
 pub fn get_params(query: &String) -> Value {

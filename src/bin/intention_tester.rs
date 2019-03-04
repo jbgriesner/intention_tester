@@ -21,12 +21,15 @@ struct Args {
 fn run(args: Args) -> Result<(), Error> {
     let url = args.nlu_api_url;
 
-    if args.path_test_files.is_dir() {
+    let (pred, real) = if args.path_test_files.is_dir() {
         let paths: std::fs::ReadDir = fs::read_dir(&args.path_test_files)?;
-        intention_tester::parse_csv(url, paths.map(|p| p.unwrap().path()))
+        intention_tester::parse_csv(url, paths.map(|p| p.unwrap().path())).unwrap()
     } else {
-        intention_tester::parse_csv(url, std::iter::once(args.path_test_files))
-    }
+        intention_tester::parse_csv(url, std::iter::once(args.path_test_files)).unwrap()
+    };
+
+    intention_tester::compute_scores(pred, real);
+    Ok(())
 }
 
 fn main() {

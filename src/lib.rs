@@ -9,11 +9,14 @@ pub use structopt::StructOpt;
 
 pub type Error = failure::Error;
 
-pub mod utils;
+mod utils;
+mod csvrow;
+
+use csvrow::CsvRow;
 
 pub fn compute_scores(predictions: Vec<String>, effective_class: Vec<String>) -> () {
     let acc = accuracy(predictions.iter(), effective_class.iter());
-    println!("accuracy: {}", acc);
+    println!("Final accuracy: {}", acc);
 }
 
 pub fn parse_csv<I>(url: String, paths: I) -> Result<(Vec<String>, Vec<String>), Error>
@@ -33,7 +36,7 @@ where
         let file = File::open(path)?;
         let mut rdr = csv::Reader::from_reader(file);
         for rw in rdr.deserialize() {
-            let test_row: utils::CsvRow = rw?;
+            let test_row: CsvRow = rw?;
             let query = test_row.query;
             let real_intention = test_row.intention;
             let params = utils::get_params(&query);
@@ -50,7 +53,5 @@ where
             predictions.push(predicted_intention);
         }
     }
-    //println!("predictions: {:#?}", predictions);
-    //println!("classes: {:#?}", effective_class);
     Ok((predictions, effective_class))
 }

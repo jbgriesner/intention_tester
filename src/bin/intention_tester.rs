@@ -1,5 +1,3 @@
-extern crate intention_tester;
-
 use intention_tester::{Error, StructOpt};
 use std::fs;
 
@@ -21,14 +19,14 @@ struct Args {
 fn run(args: Args) -> Result<(), Error> {
     let url = args.nlu_api_url;
 
-    let (pred, real) = if args.path_test_files.is_dir() {
+    let (predicted_categories, effective_categories) = if args.path_test_files.is_dir() {
         let paths: std::fs::ReadDir = fs::read_dir(&args.path_test_files)?;
         intention_tester::parse_csv(url, paths.map(|p| p.unwrap().path())).unwrap()
     } else {
         intention_tester::parse_csv(url, std::iter::once(args.path_test_files)).unwrap()
     };
 
-    intention_tester::compute_scores(pred, real);
+    intention_tester::compute_scores(predicted_categories, effective_categories);
     Ok(())
 }
 

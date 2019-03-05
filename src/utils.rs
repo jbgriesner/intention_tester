@@ -1,12 +1,6 @@
 use crate::{json, Error, StructOpt, Value};
 use std::process::exit;
 
-#[derive(Debug, Deserialize)]
-pub struct CsvRow {
-    pub query: String,
-    pub intention: String,
-}
-
 pub fn get_params(query: &String) -> Value {
     json!({"text": &query,"language":"fr","domain":"poi","count":1})
 }

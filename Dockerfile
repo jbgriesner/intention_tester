@@ -11,4 +11,6 @@ RUN apt-get update \
 COPY . ./
 
 RUN cargo build --release
-RUN cargo run
+ENV PATH /srv/intention_tester/target/release/:$PATH
+ENTRYPOINT ["intention_tester", "-c"]
+CMD ["API-url"]

@@ -3,7 +3,7 @@
 
 - You can run intention_tester either manually or with Docker.
 
-## Install & Run the binary (Recommended method)
+## Install & Run the binary (Recommended method)
 - if you have `rust` and `cargo` installed on your machine, you can install the `intention_tester` tool as follows:
 ```
 cargo install intention_tester
